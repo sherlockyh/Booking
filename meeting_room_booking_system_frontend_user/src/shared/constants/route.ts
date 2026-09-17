@@ -1,0 +1,16 @@
+export const ROUTE_PATH = {
+  login: "/login",
+  register: "/register",
+  profile: "/profile",
+  password: "/password",
+  adminLogin: "/admin/login",
+  adminUsers: "/admin/users",
+  adminProfile: "/admin/profile",
+  adminPassword: "/admin/password",
+  adminMeetingRooms: "/admin/meeting-rooms",
+  adminBookings: "/admin/bookings",
+  adminStatistics: "/admin/statistics",
+  meetingRooms: "/meeting-rooms",
+  bookings: "/bookings",
+  statistics: "/statistics",
+} as const;

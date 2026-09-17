@@ -1,0 +1,16 @@
+# 仅本地开发使用：把 MySQL / Redis 端口暴露到宿主机，方便本地用图形工具连库。
+# 本地 `docker compose up -d` 会自动加载本文件；
+# 线上用 `docker compose -f docker-compose.yml up -d` 则不加载，数据库不会对外暴露。
+
+services:
+  nest-app:
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+
+  mysql:
+    ports:
+      - "3306:3306"
+
+  redis:
+    ports:
+      - "6380:6379"

@@ -1,0 +1,95 @@
+name: meeting-room-booking
+
+services:
+  nest-app:
+    build:
+      context: ./meeting_room_booking_system_backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-3000}
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:?set-DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE:-meeting_room_booking_system}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      JWT_SECRET: ${JWT_SECRET:?set-JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30m}
+    volumes:
+      - uploads-data:/app/uploads
+    networks:
+      - common-network
+
+  frontend:
+    # 前端源码随仓库走，部署时本地构建，不依赖外部镜像仓库
+    build:
+      context: ./meeting_room_booking_system_frontend_user
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      nest-app:
+        condition: service_started
+    environment:
+      BACKEND_HOST: nest-app
+      BACKEND_PORT: ${PORT:-3000}
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - common-network
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?set-DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-meeting_room_booking_system}
+      MYSQL_USER: ${DB_USERNAME:-booking_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set-DB_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping --protocol=socket -uroot']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - common-network
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - common-network
+
+volumes:
+  mysql-data:
+  redis-data:
+  uploads-data:
+
+networks:
+  common-network:
+    driver: bridge
