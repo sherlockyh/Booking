@@ -21,8 +21,8 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
-# 提前建好上传目录并归属给 node 用户，命名卷首次挂载时会继承该权限
-RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
+# 提前建好上传/日志目录并归属给 node 用户，命名卷首次挂载时会继承该权限
+RUN mkdir -p /app/uploads /app/logs && chown -R node:node /app/uploads /app/logs
 USER node
 
 EXPOSE 3000

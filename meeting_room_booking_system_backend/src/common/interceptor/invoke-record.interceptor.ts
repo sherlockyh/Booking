@@ -28,7 +28,8 @@ export class InvokeRecordInterceptor implements NestInterceptor {
 
     const { ip, method, path } = request;
 
-    this.logger.debug(
+    // 用 log 级别（winston 侧映射为 info）：保证生产默认 LOG_LEVEL=http 下请求日志可见
+    this.logger.log(
       `${method} ${path} ${ip} ${userAgent}: ${context.getClass().name} ${
         context.getHandler().name
       } invoked...`,
@@ -42,7 +43,7 @@ export class InvokeRecordInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap((res) => {
-        this.logger.debug(
+        this.logger.log(
           `${method} ${path} ${ip} ${userAgent}: ${response.statusCode}: ${Date.now() - now}ms`,
         );
         this.logger.debug(`Response: ${JSON.stringify(res)}`);
