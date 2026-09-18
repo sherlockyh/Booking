@@ -12,12 +12,14 @@ import appConfig from '@infrastructure/config/app.config';
 import databaseConfig from '@infrastructure/config/database.config';
 import redisConfig from '@infrastructure/config/redis.config';
 import jwtConfig from '@infrastructure/config/jwt.config';
+import ossConfig from '@infrastructure/config/oss.config';
 import { InitialSchema1756810000000 } from '@infrastructure/database/migrations/1756810000000-initial-schema';
 import { AddMeetingRoom1757510000000 } from '@infrastructure/database/migrations/1757510000000-add-meeting-room';
 import { AddBooking1757520000000 } from '@infrastructure/database/migrations/1757520000000-add-booking';
 import { AlterPasswordLength1757600000000 } from '@infrastructure/database/migrations/1757600000000-alter-password-length';
 import { SeedFreshAccounts1757700000000 } from '@infrastructure/database/migrations/1757700000000-seed-fresh-accounts';
 import { JwtInfraModule } from '@infrastructure/jwt/jwt.module';
+import { OssModule } from '@infrastructure/oss/oss.module';
 import { APP_GUARD } from '@nestjs/core';
 import { LoginGuard } from '@common/guard/login.guard';
 import { PermissionGuard } from '@common/guard/permission.guard';
@@ -31,7 +33,7 @@ import { StatisticModule } from './modules/statistic/statistic.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, redisConfig, jwtConfig],
+      load: [appConfig, databaseConfig, redisConfig, jwtConfig, ossConfig],
     }),
     TypeOrmModule.forRootAsync({
       inject: [databaseConfig.KEY],
@@ -59,6 +61,7 @@ import { StatisticModule } from './modules/statistic/statistic.module';
     UserModule,
     RedisModule,
     JwtInfraModule,
+    OssModule,
     MeetingRoomModule,
     BookingModule,
     StatisticModule,

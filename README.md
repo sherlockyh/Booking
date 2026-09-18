@@ -2,7 +2,7 @@
 
 前后端同仓（monorepo）：
 
-- `meeting_room_booking_system_backend/`：NestJS 后端（MySQL + Redis）
+- `meeting_room_booking_system_backend/`：NestJS 后端（MySQL + Redis + MinIO）
 - `meeting_room_booking_system_frontend_user/`：React + Vite 用户端（Nginx 托管并反代后端）
 
 ## 本地开发
@@ -22,6 +22,16 @@ docker compose up -d --build
 ```bash
 cd meeting_room_booking_system_backend  && npm run start:dev
 cd meeting_room_booking_system_frontend_user && npm run dev
+```
+
+## 对象存储（MinIO）
+
+头像上传走 S3 协议存 MinIO：S3 API `http://localhost:9000`，Web 控制台 `http://localhost:9001`（账号见 `.env` 的 `MINIO_ROOT_USER/PASSWORD`）。
+
+练习 S3 操作（建桶/上传/下载/列举/预签名/删除）：
+
+```bash
+cd meeting_room_booking_system_backend && node scripts/oss-playground.mjs
 ```
 
 ## 服务器部署
