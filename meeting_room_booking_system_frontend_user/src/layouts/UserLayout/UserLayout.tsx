@@ -14,7 +14,6 @@ import type { MenuProps } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTE_PATH } from '@/shared/constants/route';
 import { clearUserSession, useUserStore } from '@/modules/user/store';
-import { resolveFileUrl } from '@/shared/utils/file';
 import { getAccessToken } from '@/shared/utils/token';
 import styles from './styles/index.module.less';
 
@@ -95,7 +94,7 @@ export function UserLayout() {
           <div />
           <Dropdown menu={{ items: dropdownItems }} placement="bottomRight">
             <Space className={styles.userTrigger}>
-              <Avatar src={resolveFileUrl(userInfo?.headPic) || undefined} icon={<UserOutlined />} />
+              <Avatar src={userInfo?.headPicUrl || undefined} icon={<UserOutlined />} />
               <div className={styles.userText}>
                 <strong>{userInfo?.nickName || userInfo?.username || '用户'}</strong>
                 <span>{userInfo?.email || '未设置邮箱'}</span>

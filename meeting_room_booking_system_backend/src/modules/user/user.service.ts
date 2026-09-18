@@ -20,6 +20,7 @@ import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
 import { DeleteUserDto } from './dto/delete-user.dto';
+import { OssService } from '@infrastructure/oss/oss.service';
 
 @Injectable()
 export class UserService {
@@ -36,6 +37,9 @@ export class UserService {
 
   @Inject(RedisService)
   private redisService: RedisService;
+
+  @Inject(OssService)
+  private ossService: OssService;
 
   async getRegisterCaptcha() {
     const captchaId = randomUUID();
@@ -168,6 +172,7 @@ export class UserService {
       email: user.email,
       phoneNumber: user.phoneNumber,
       headPic: user.headPic,
+      headPicUrl: this.ossService.resolveAvatarUrl(user.headPic),
       createTime: user.createTime.getTime(),
       isFrozen: user.isFrozen,
       isAdmin: user.isAdmin,
@@ -401,7 +406,11 @@ export class UserService {
     });
 
     return {
-      users,
+      // headPic 存的是 OSS Key（或历史遗留路径），给出参时拼成可访问 URL
+      users: users.map((user) => ({
+        ...user,
+        headPicUrl: this.ossService.resolveAvatarUrl(user.headPic),
+      })),
       totalCount,
     };
   }

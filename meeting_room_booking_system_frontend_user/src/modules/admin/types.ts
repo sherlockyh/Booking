@@ -10,7 +10,7 @@ export interface LoginResult extends UserLoginResult {}
 
 export interface AdminUserItem extends Pick<
   UserInfo,
-  "id" | "username" | "nickName" | "email" | "headPic" | "isFrozen"
+  "id" | "username" | "nickName" | "email" | "headPic" | "headPicUrl" | "isFrozen"
 > {
   createTime: string | number;
 }

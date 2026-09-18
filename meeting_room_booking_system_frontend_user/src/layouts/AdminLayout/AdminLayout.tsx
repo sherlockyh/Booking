@@ -14,7 +14,6 @@ import type { MenuProps } from 'antd';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { clearAdminSession, useAdminStore } from '@/modules/admin/store';
 import { ROUTE_PATH } from '@/shared/constants/route';
-import { resolveFileUrl } from '@/shared/utils/file';
 import { getAccessToken } from '@/shared/utils/token';
 import styles from './styles/index.module.less';
 
@@ -97,7 +96,7 @@ export function AdminLayout() {
           <div />
           <Dropdown menu={{ items: dropdownItems }} placement="bottomRight">
             <Space className={styles.userTrigger}>
-              <Avatar src={resolveFileUrl(userInfo?.headPic) || undefined} icon={<UserOutlined />} />
+              <Avatar src={userInfo?.headPicUrl || undefined} icon={<UserOutlined />} />
               <div className={styles.userText}>
                 <strong>{userInfo?.nickName || userInfo?.username || '管理员'}</strong>
                 <span>{userInfo?.email || '后台管理账号'}</span>

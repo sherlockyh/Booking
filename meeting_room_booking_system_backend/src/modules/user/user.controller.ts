@@ -28,9 +28,10 @@ import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
 import { DeleteUserDto } from './dto/delete-user.dto';
 import { generateParseIntPipe } from '@common/utils';
 import path from 'path';
+import * as multer from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
 import 'multer';
-import { storage } from '@common/utils/my-file-storage';
+import { OssService } from '@infrastructure/oss/oss.service';
 
 @Controller('user')
 export class UserController {
@@ -41,6 +42,9 @@ export class UserController {
 
   @Inject(ConfigService)
   private configService: ConfigService;
+
+  @Inject(OssService)
+  private ossService: OssService;
 
   @Get('captcha')
   async getRegisterCaptcha() {
@@ -158,6 +162,7 @@ export class UserController {
     vo.email = user.email;
     vo.username = user.username;
     vo.headPic = user.headPic;
+    vo.headPicUrl = this.ossService.resolveAvatarUrl(user.headPic);
     vo.phoneNumber = user.phoneNumber;
     vo.nickName = user.nickName;
     vo.createTime = user.createTime.getTime();
@@ -236,17 +241,28 @@ export class UserController {
     return await this.userService.deleteUserByAdmin(deleteUserDto);
   }
 
+  // 上传接口：FileInterceptor 拦截 multipart/form-data 请求，
+  // 解析出名为 "file" 的文件字段（前端 FormData.append('file', ...) 对应这个名字），
+  // 解析结果挂在 request.file 上，再通过 @UploadedFile() 注入进来。
+  // multer 的处理管线 = storage（存哪里）+ limits（限制）+ fileFilter（收不收）
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      dest: 'uploads',
-      storage: storage,
+      // memoryStorage：文件先缓冲进内存（req.file.buffer），由我们的代码决定去向——
+      // 这里是转存 MinIO。旧版 diskStorage 是直接写本地磁盘，文件生命周期和应用绑死。
+      // 注意代价：3MB 上限下内存缓冲没问题，若以后传大文件应改用流式直传 MinIO
+      storage: multer.memoryStorage(),
+      // 超过 3MB 的请求在 multer 层就被拒绝，不会进入业务代码
       limits: {
         fileSize: 1024 * 1024 * 3,
       },
+      // fileFilter：返回 true 收下文件 / 抛错拒绝。
+      // 扩展名 + 声明的 MIME 双重校验，两头都拦截明显伪装的文件；
+      // 真正落盘的文件名由 OssService 随机生成，用户的原始文件名不参与存储路径
       fileFilter(req, file, callback) {
-        const extname = path.extname(file.originalname);
-        if (['.png', '.jpg', '.gif'].includes(extname)) {
+        const extname = path.extname(file.originalname).toLowerCase();
+        const allowedMime = ['image/png', 'image/jpeg', 'image/gif'];
+        if (['.png', '.jpg', '.gif'].includes(extname) && allowedMime.includes(file.mimetype)) {
           callback(null, true);
         } else {
           callback(new BadRequestException('只能上传图片'), false);
@@ -254,7 +270,14 @@ export class UserController {
       },
     }),
   )
-  uploadFile(@UploadedFile() file: Express.Multer.File) {
-    return file.path;
+  // file 可选：fileFilter 拒绝时（比如没传字段）Nest 不会执行到这里，
+  // 但没带文件字段的请求会带着 file === undefined 进来，所以要兜底校验
+  async uploadFile(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('请选择要上传的文件');
+    }
+    // 返回值约定为"可直接访问的 URL 字符串"，
+    // 前端 ImageUpload 组件拿到后回填表单，随资料更新一起存进 users.head_pic
+    return await this.ossService.uploadAvatar(file);
   }
 }

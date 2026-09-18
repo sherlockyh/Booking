@@ -11,7 +11,6 @@ import { ConfigTable } from '@/shared/components/ConfigTable/ConfigTable';
 import { PageHeader } from '@/shared/components/PageHeader/PageHeader';
 import { usePageRequest } from '@/shared/hooks/usePageRequest';
 import { useRequest } from '@/shared/hooks/useRequest';
-import { resolveFileUrl } from '@/shared/utils/file';
 import styles from './styles/index.module.less';
 
 const initialSearch: AdminUserSearchParams = {
@@ -77,10 +76,10 @@ export function UserListPage() {
     () => [
       {
         title: '头像',
-        dataIndex: 'headPic',
+        dataIndex: 'headPicUrl',
         width: 88,
-        render: (headPic: string | undefined) => (
-          <Avatar src={resolveFileUrl(headPic) || undefined} icon={<UserOutlined />} />
+        render: (headPicUrl: string | undefined) => (
+          <Avatar src={headPicUrl || undefined} icon={<UserOutlined />} />
         ),
       },
       {

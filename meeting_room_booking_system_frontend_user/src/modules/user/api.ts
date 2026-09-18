@@ -1,4 +1,5 @@
 import { httpGet, httpPost } from "@/shared/api/request";
+import type { UploadOssResult } from "@/shared/api/types";
 import type { CaptchaResult } from "@/modules/user/auth/types";
 import type {
   UpdatePasswordParams,
@@ -30,7 +31,8 @@ export function uploadUserFile(file: File) {
   const formData = new FormData();
   formData.append("file", file);
 
-  return httpPost<string, FormData>("/user/upload", formData);
+  // key 回填表单将来存库，url 只用于上传后立即预览
+  return httpPost<UploadOssResult, FormData>("/user/upload", formData);
 }
 
 export function getUpdatePasswordCaptcha() {

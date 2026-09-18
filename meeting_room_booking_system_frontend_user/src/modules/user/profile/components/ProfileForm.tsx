@@ -3,6 +3,7 @@ import { Form, Input, App as AntdApp } from 'antd';
 import { getUpdateProfileCaptcha, updateProfile } from '@/modules/user/api';
 import type { CaptchaResult } from '@/modules/user/auth/types';
 import type { UpdateProfileParams, UserInfo } from '@/modules/user/types';
+import type { UploadOssResult } from '@/shared/api/types';
 import { CaptchaButton } from '@/shared/components/CaptchaButton/CaptchaButton';
 import { ImageUpload } from '@/shared/components/ImageUpload/ImageUpload';
 import { useRequest } from '@/shared/hooks/useRequest';
@@ -14,7 +15,7 @@ interface ProfileFormProps {
   onUpdated: () => void;
   getCaptcha?: () => Promise<CaptchaResult>;
   saveProfile?: (params: UpdateProfileParams) => Promise<string>;
-  uploadFile?: (file: File) => Promise<string>;
+  uploadFile?: (file: File) => Promise<UploadOssResult>;
 }
 
 export function ProfileForm({
@@ -66,6 +67,7 @@ export function ProfileForm({
         <ImageUpload
           buttonText="上传头像"
           description="支持 png、jpg、gif 格式，上传后会自动回填保存字段"
+          valueUrl={userInfo.headPicUrl}
           uploadFile={uploadFile}
         />
       </Form.Item>
