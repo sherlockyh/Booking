@@ -1,4 +1,5 @@
 import { httpGet, httpPost } from "@/shared/api/request";
+import { createBookingApi } from "@/shared/api/createBookingApi";
 import type { UploadOssResult } from "@/shared/api/types";
 import type { CaptchaResult } from "@/modules/user/auth/types";
 import type {
@@ -6,14 +7,6 @@ import type {
   UpdateProfileParams,
   UserInfo,
 } from "@/modules/user/types";
-import type {
-  MeetingRoomItem,
-  MeetingRoomSearchParams,
-  BookingItem,
-  BookingSearchParams,
-  UserBookingCountItem,
-  MeetingRoomUsedCountItem,
-} from "@/modules/admin/types";
 
 export function getUserInfo() {
   return httpGet<UserInfo>("/user/info");
@@ -46,57 +39,13 @@ export function updatePassword(params: UpdatePasswordParams) {
   );
 }
 
-interface MeetingRoomListResponse {
-  meetingRooms: MeetingRoomItem[];
-  totalCount: number;
-}
+const bookingApi = createBookingApi(httpGet);
 
-export function getMeetingRoomList(
-  params: { pageNo: number; pageSize: number } & MeetingRoomSearchParams,
-) {
-  return httpGet<MeetingRoomListResponse>("/meeting-room/list", {
-    params: params as unknown as Record<string, unknown>,
-  }).then((result) => {
-    return {
-      list: result.meetingRooms,
-      total: result.totalCount,
-    };
-  });
-}
-
-// --- 用户预定 ---
-
-interface BookingListResponse {
-  bookings: BookingItem[];
-  totalCount: number;
-}
-
-export function getBookingList(
-  params: { pageNo: number; pageSize: number } & BookingSearchParams,
-) {
-  const queryParams: Record<string, unknown> = {
-    pageNo: params.pageNo,
-    pageSize: params.pageSize,
-    username: params.username || undefined,
-    meetingRoomName: params.meetingRoomName || undefined,
-    meetingRoomPosition: params.meetingRoomPosition || undefined,
-    bookingTimeRangeStart: params.bookingTimeRangeStart
-      ? Number(params.bookingTimeRangeStart)
-      : undefined,
-    bookingTimeRangeEnd: params.bookingTimeRangeEnd
-      ? Number(params.bookingTimeRangeEnd)
-      : undefined,
-  };
-
-  return httpGet<BookingListResponse>("/booking/list", {
-    params: queryParams,
-  }).then((result) => {
-    return {
-      list: result.bookings,
-      total: result.totalCount,
-    };
-  });
-}
+export const getMeetingRoomList = bookingApi.getMeetingRoomList;
+export const getBookingList = bookingApi.getBookingList;
+export const unbindBooking = bookingApi.unbindBooking;
+export const getUserBookingCount = bookingApi.getUserBookingCount;
+export const getMeetingRoomUsedCount = bookingApi.getMeetingRoomUsedCount;
 
 export function addBooking(params: {
   meetingRoomId: number;
@@ -105,31 +54,4 @@ export function addBooking(params: {
   note: string;
 }) {
   return httpPost<string, typeof params>("/booking/add", params);
-}
-
-export function unbindBooking(id: number) {
-  return httpGet<string>(`/booking/unbind/${id}`);
-}
-
-// --- 统计模块 ---
-
-export function getUserBookingCount(params: {
-  startTime: string;
-  endTime: string;
-}) {
-  return httpGet<UserBookingCountItem[]>("/statistic/userBookingCount", {
-    params: params as unknown as Record<string, unknown>,
-  });
-}
-
-export function getMeetingRoomUsedCount(params: {
-  startTime: string;
-  endTime: string;
-}) {
-  return httpGet<MeetingRoomUsedCountItem[]>(
-    "/statistic/meetingRoomUsedCount",
-    {
-      params: params as unknown as Record<string, unknown>,
-    },
-  );
 }

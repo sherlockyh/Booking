@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsUUID, MinLength } from 'class-validator';
+import { IsNotEmpty, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateUserPasswordDto {
   @IsNotEmpty({
@@ -6,6 +6,9 @@ export class UpdateUserPasswordDto {
   })
   @MinLength(6, {
     message: '密码不能少于 6 位',
+  })
+  @MaxLength(50, {
+    message: '密码最长为 50 字符',
   })
   password: string;
 

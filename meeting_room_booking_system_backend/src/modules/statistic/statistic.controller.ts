@@ -1,10 +1,13 @@
 import { Controller, Get, HttpStatus, Inject, Query } from '@nestjs/common';
 import { StatisticService } from './statistic.service';
 import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { UserBookingCount } from './vo/UserBookignCount.vo';
+import { UserBookingCount } from './vo/UserBookingCount.vo';
 import { MeetingRoomUsedCount } from './vo/MeetingRoomUsedCount.vo';
+import { RequireLogin } from '@common/decorators/custom.decorator';
 
 @ApiTags('统计')
+@ApiBearerAuth()
+@RequireLogin()
 @Controller('statistic')
 export class StatisticController {
   @Inject(StatisticService)

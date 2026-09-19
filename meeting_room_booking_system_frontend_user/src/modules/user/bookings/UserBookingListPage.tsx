@@ -12,22 +12,8 @@ import { PageHeader } from '@/shared/components/PageHeader/PageHeader';
 import { usePageRequest } from '@/shared/hooks/usePageRequest';
 import styles from './styles/index.module.less';
 
-const STATUS_CONFIG: Record<string, { color: string; text: string }> = {
-  '申请中': { color: 'processing', text: '申请中' },
-  '审批通过': { color: 'success', text: '审批通过' },
-  '审批驳回': { color: 'error', text: '审批驳回' },
-  '已解除': { color: 'default', text: '已解除' },
-};
-
-function formatDateTime(value?: string | number) {
-  if (!value) {
-    return '-';
-  }
-
-  const time = dayjs(value);
-  return time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : '-';
-}
-
+import { formatDateTime } from '@/shared/utils/datetime';
+import { BOOKING_STATUS_CONFIG } from '@/shared/constants/bookingStatus';
 export function UserBookingListPage() {
   const { message } = AntdApp.useApp();
   const userInfo = useUserStore((state) => state.userInfo);
@@ -112,7 +98,7 @@ export function UserBookingListPage() {
         dataIndex: 'status',
         width: 100,
         render: (status: string) => {
-          const config = STATUS_CONFIG[status];
+          const config = BOOKING_STATUS_CONFIG[status];
           return config ? <Tag color={config.color}>{config.text}</Tag> : status;
         },
       },

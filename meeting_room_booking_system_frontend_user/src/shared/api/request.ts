@@ -44,7 +44,9 @@ function createRequestClient(options: RequestClientOptions) {
   });
 
   client.interceptors.response.use(
-    async (response) => {
+    // 拦截器统一把响应体解包成业务数据返回，与 axios 官方要求的
+    // "返回 AxiosResponse" 签名不一致，这里以 any 收口
+    async (response): Promise<any> => {
       const result = response.data as ApiResponse<unknown>;
       const originalRequest = response.config as RetryableRequestConfig;
 
@@ -106,40 +108,67 @@ function createRequestClient(options: RequestClientOptions) {
   return client;
 }
 
-async function refreshTokenAndRetry(
-  client: AxiosInstance,
-  options: RequestClientOptions,
-  originalRequest: RetryableRequestConfig,
-) {
-  const refreshToken = getRefreshToken(options.scope);
+interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
 
-  if (!refreshToken) {
-    return null;
+// 同一 scope 下并发多个 401 时，共享同一个刷新请求，避免重复刷新
+const refreshingByScope = new Map<SessionScope, Promise<TokenPair | null>>();
+
+async function requestNewTokens(
+  options: RequestClientOptions,
+): Promise<TokenPair | null> {
+  const inflight = refreshingByScope.get(options.scope);
+  if (inflight) {
+    return inflight;
   }
 
-  originalRequest._retry = true;
+  const promise = (async () => {
+    const refreshToken = getRefreshToken(options.scope);
 
-  try {
-    const tokens = await axios.get<{
-      data: { accessToken: string; refreshToken: string };
-    }>(`/api${options.refreshUrl}`, {
-      params: { refreshToken },
-    });
+    if (!refreshToken) {
+      return null;
+    }
+
+    // POST + body 传输，避免 refresh token 出现在 URL 上被日志记录
+    const tokens = await axios.post<{
+      data: TokenPair;
+    }>(`/api${options.refreshUrl}`, { refreshToken });
 
     setTokens(
       tokens.data.data.accessToken,
       tokens.data.data.refreshToken,
       options.scope,
     );
-    originalRequest.headers = {
-      ...originalRequest.headers,
-      Authorization: `Bearer ${tokens.data.data.accessToken}`,
-    };
+    return tokens.data.data;
+  })()
+    .catch(() => null)
+    .finally(() => refreshingByScope.delete(options.scope));
 
-    return client.request(originalRequest);
-  } catch {
+  refreshingByScope.set(options.scope, promise);
+  return promise;
+}
+
+async function refreshTokenAndRetry(
+  client: AxiosInstance,
+  options: RequestClientOptions,
+  originalRequest: RetryableRequestConfig,
+) {
+  originalRequest._retry = true;
+
+  const tokens = await requestNewTokens(options);
+
+  if (!tokens) {
     return null;
   }
+
+  originalRequest.headers = {
+    ...originalRequest.headers,
+    Authorization: `Bearer ${tokens.accessToken}`,
+  };
+
+  return client.request(originalRequest);
 }
 
 function handleLogout(options: RequestClientOptions) {

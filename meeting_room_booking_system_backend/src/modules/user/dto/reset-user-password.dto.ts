@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, MinLength } from 'class-validator';
+import { IsNotEmpty, IsNumber, MaxLength, MinLength } from 'class-validator';
 
 export class ResetUserPasswordDto {
   @IsNotEmpty({
@@ -14,6 +14,9 @@ export class ResetUserPasswordDto {
   })
   @MinLength(6, {
     message: '密码不能少于 6 位',
+  })
+  @MaxLength(50, {
+    message: '密码最长为 50 字符',
   })
   password: string;
 }

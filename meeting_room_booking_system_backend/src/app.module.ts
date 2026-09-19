@@ -23,6 +23,7 @@ import { AddMeetingRoom1757510000000 } from '@infrastructure/database/migrations
 import { AddBooking1757520000000 } from '@infrastructure/database/migrations/1757520000000-add-booking';
 import { AlterPasswordLength1757600000000 } from '@infrastructure/database/migrations/1757600000000-alter-password-length';
 import { SeedFreshAccounts1757700000000 } from '@infrastructure/database/migrations/1757700000000-seed-fresh-accounts';
+import { AddUniqueAndBookingIndexes1757800000000 } from '@infrastructure/database/migrations/1757800000000-add-unique-and-booking-indexes';
 import { JwtInfraModule } from '@infrastructure/jwt/jwt.module';
 import { OssModule } from '@infrastructure/oss/oss.module';
 import { APP_GUARD } from '@nestjs/core';
@@ -93,6 +94,7 @@ import { StatisticModule } from './modules/statistic/statistic.module';
           AddBooking1757520000000,
           AlterPasswordLength1757600000000,
           SeedFreshAccounts1757700000000,
+          AddUniqueAndBookingIndexes1757800000000,
         ],
         poolSize: 10,
       }),

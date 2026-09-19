@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
 interface UseRequestOptions<TData> {
-  manual?: boolean;
   onSuccess?: (data: TData) => void;
 }
 
@@ -18,17 +17,29 @@ export function useRequest<TData, TParams extends unknown[]>(
   const serviceRef = useRef(service);
   serviceRef.current = service;
 
+  // 请求序号：并发/连点时只认最后一次请求，慢的旧响应不覆盖新状态
+  const seqRef = useRef(0);
+
   const run = useCallback(
     async (...params: TParams) => {
+      const seq = ++seqRef.current;
       setLoading(true);
 
       try {
         const result = await serviceRef.current(...params);
+
+        if (seq !== seqRef.current) {
+          // 期间又发起了新请求，本次结果已过期，只返回不落状态
+          return result;
+        }
+
         setData(result);
         optionsRef.current?.onSuccess?.(result);
         return result;
       } finally {
-        setLoading(false);
+        if (seq === seqRef.current) {
+          setLoading(false);
+        }
       }
     },
     [],

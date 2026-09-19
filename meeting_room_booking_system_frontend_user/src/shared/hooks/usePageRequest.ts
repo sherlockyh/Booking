@@ -24,22 +24,33 @@ export function usePageRequest<TItem, TSearch extends object>(
   const serviceRef = useRef(service);
   serviceRef.current = service;
 
+  // 请求序号：快速翻页/连续搜索时只认最后一次请求，慢的旧响应不覆盖新页数据
+  const seqRef = useRef(0);
+
   const params = useMemo<PageState & TSearch>(
     () => ({ ...page, ...search }),
     [page, search],
   );
 
   const load = useCallback(async () => {
+    const seq = ++seqRef.current;
     setLoading(true);
 
     try {
       const result = await serviceRef.current(params);
+
+      if (seq !== seqRef.current) {
+        return;
+      }
+
       setItems(result.list);
       setTotal(result.total);
     } catch {
       // 错误已由请求拦截器统一处理（弹 message 等）
     } finally {
-      setLoading(false);
+      if (seq === seqRef.current) {
+        setLoading(false);
+      }
     }
   }, [params]);
 

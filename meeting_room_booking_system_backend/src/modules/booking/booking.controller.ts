@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { BookingService } from './booking.service';
-import { generateParseIntPipe } from '@common/utils';
+import { generateMaxValuePipe, generateParseIntPipe } from '@common/utils';
 import { RequireAdmin, RequireLogin, UserInfo } from '@common/decorators/custom.decorator';
 import { CreateBookingDto } from './dto/create-booking.dto';
 
@@ -18,6 +18,7 @@ export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
 
   @Get('list')
+  @RequireLogin()
   async list(
     @Query('pageNo', new DefaultValuePipe(1), generateParseIntPipe('pageNo'))
     pageNo: number,
@@ -25,6 +26,7 @@ export class BookingController {
       'pageSize',
       new DefaultValuePipe(10),
       generateParseIntPipe('pageSize'),
+      generateMaxValuePipe('pageSize', 100),
     )
     pageSize: number,
     @Query('username') username: string,
@@ -32,6 +34,8 @@ export class BookingController {
     @Query('meetingRoomPosition') meetingRoomPosition: string,
     @Query('bookingTimeRangeStart') bookingTimeRangeStart: number,
     @Query('bookingTimeRangeEnd') bookingTimeRangeEnd: number,
+    // 非管理员强制只看自己的预订，防止越权拉取全量数据
+    @UserInfo() user: { userId: number; isAdmin: boolean },
   ) {
     return this.bookingService.find(
       pageNo,
@@ -41,6 +45,7 @@ export class BookingController {
       meetingRoomPosition,
       bookingTimeRangeStart,
       bookingTimeRangeEnd,
+      user.isAdmin ? undefined : user.userId,
     );
   }
 

@@ -26,7 +26,8 @@ import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
 import { DeleteUserDto } from './dto/delete-user.dto';
-import { generateParseIntPipe } from '@common/utils';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { generateMaxValuePipe, generateParseIntPipe } from '@common/utils';
 import path from 'path';
 import * as multer from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -86,30 +87,34 @@ export class UserController {
     return vo;
   }
 
-  @Get('refresh')
-  async refresh(@Query('refreshToken') refreshToken: string) {
-    try {
-      const data = this.jwtService.verify(refreshToken);
-      const user = await this.userService.findUserById(data.userId, false);
-      if (!user?.id) {
-        throw new Error('user not found');
-      }
-      return this.generateTokens(user);
-    } catch (e) {
-      throw new UnauthorizedException('token 已失效，请重新登录');
-    }
+  // refresh token 只走 POST + body 传输：GET + query 会让 token 落到
+  // nginx access log / 代理日志里，造成泄露面扩大
+  @Post('refresh')
+  async refresh(@Body() body: RefreshTokenDto) {
+    return this.refreshTokens(body.refreshToken, false);
   }
 
-  @Get('admin/refresh')
-  async adminRefresh(@Query('refreshToken') refreshToken: string) {
+  @Post('admin/refresh')
+  async adminRefresh(@Body() body: RefreshTokenDto) {
+    return this.refreshTokens(body.refreshToken, true);
+  }
+
+  private async refreshTokens(refreshToken: string, isAdmin: boolean) {
     try {
       const data = this.jwtService.verify(refreshToken);
-      const user = await this.userService.findUserById(data.userId, true);
+      const user = await this.userService.findUserById(data.userId, isAdmin);
       if (!user?.id) {
-        throw new Error('user not found');
+        throw new UnauthorizedException('token 已失效，请重新登录');
+      }
+      // 账号被冻结后拒绝刷新，冻结在下一次刷新时生效
+      if (user.isFrozen) {
+        throw new UnauthorizedException('账号已被冻结，请联系管理员');
       }
       return this.generateTokens(user);
     } catch (e) {
+      if (e instanceof UnauthorizedException) {
+        throw e;
+      }
       throw new UnauthorizedException('token 已失效，请重新登录');
     }
   }
@@ -212,6 +217,7 @@ export class UserController {
       'pageSize',
       new DefaultValuePipe(10),
       generateParseIntPipe('pageSize'),
+      generateMaxValuePipe('pageSize', 100),
     )
     pageSize: number,
     @Query('username') username: string,
@@ -246,6 +252,7 @@ export class UserController {
   // 解析结果挂在 request.file 上，再通过 @UploadedFile() 注入进来。
   // multer 的处理管线 = storage（存哪里）+ limits（限制）+ fileFilter（收不收）
   @Post('upload')
+  @RequireLogin()
   @UseInterceptors(
     FileInterceptor('file', {
       // memoryStorage：文件先缓冲进内存（req.file.buffer），由我们的代码决定去向——

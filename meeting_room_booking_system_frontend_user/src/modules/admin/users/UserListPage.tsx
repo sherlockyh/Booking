@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Avatar, Button, Popconfirm, Space, App as AntdApp } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, MailOutlined, SmileOutlined, UserOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { deleteUser, freezeUser, getUserList, unfreezeUser } from '@/modules/admin/api';
 import type { AdminUserItem, AdminUserSearchParams } from '@/modules/admin/types';
 import { ResetPasswordModal } from '@/modules/admin/users/components/ResetPasswordModal';
@@ -13,6 +12,7 @@ import { usePageRequest } from '@/shared/hooks/usePageRequest';
 import { useRequest } from '@/shared/hooks/useRequest';
 import styles from './styles/index.module.less';
 
+import { formatDateTime } from '@/shared/utils/datetime';
 const initialSearch: AdminUserSearchParams = {
   username: '',
   nickName: '',
@@ -39,15 +39,6 @@ const filterFields: ConfigFilterField<AdminUserSearchParams>[] = [
     prefix: <MailOutlined />,
   },
 ];
-
-function formatDateTime(value?: string | number) {
-  if (!value) {
-    return '-';
-  }
-
-  const time = dayjs(value);
-  return time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : '-';
-}
 
 export function UserListPage() {
   const { message } = AntdApp.useApp();

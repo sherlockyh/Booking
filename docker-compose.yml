@@ -32,6 +32,13 @@ services:
     volumes:
       - uploads-data:/app/uploads
       - logs-data:/app/logs
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3000/']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # 启动期要跑数据库迁移，多留点时间
+      start_period: 30s
     networks:
       - common-network
 
@@ -66,7 +73,7 @@ services:
     restart: unless-stopped
     depends_on:
       nest-app:
-        condition: service_started
+        condition: service_healthy
     environment:
       BACKEND_HOST: nest-app
       BACKEND_PORT: ${PORT:-3000}

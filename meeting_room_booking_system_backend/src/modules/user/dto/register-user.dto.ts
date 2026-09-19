@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsUUID, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsUUID, MaxLength, MinLength } from "class-validator";
 
 export class RegisterUserDto {
 
@@ -17,6 +17,9 @@ export class RegisterUserDto {
     })
     @MinLength(6, {
         message: '密码不能少于 6 位'
+    })
+    @MaxLength(50, {
+        message: '密码最长为 50 字符'
     })
     password: string;
     

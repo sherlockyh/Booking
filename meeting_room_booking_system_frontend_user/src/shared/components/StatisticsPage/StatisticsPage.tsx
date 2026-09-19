@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, DatePicker, Space, Spin, App as AntdApp } from 'antd';
 import { EnvironmentOutlined, ReloadOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
-import * as echarts from 'echarts';
-import type { EChartsOption } from 'echarts';
+// echarts 按需注册：只引入柱状图 + 网格/提示组件 + Canvas 渲染器，减小 bundle
+import * as echarts from 'echarts/core';
+import { BarChart } from 'echarts/charts';
+import { GridComponent, TooltipComponent } from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+import type { EChartsCoreOption, EChartsType } from 'echarts/core';
 import dayjs from 'dayjs';
 import type { UserBookingCountItem, MeetingRoomUsedCountItem } from '@/modules/admin/types';
 import { PageHeader } from '@/shared/components/PageHeader/PageHeader';
 import styles from './styles/index.module.less';
+
+echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
 const { RangePicker } = DatePicker;
 
@@ -17,9 +23,9 @@ interface StatisticsPageProps {
   fetchMeetingRoomUsedCount: (params: { startTime: string; endTime: string }) => Promise<MeetingRoomUsedCountItem[]>;
 }
 
-function useChart(option: EChartsOption | null) {
+function useChart(option: EChartsCoreOption | null) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
+  const chartRef = useRef<EChartsType | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -87,7 +93,7 @@ export function StatisticsPage({
     fetchData();
   }, [fetchData]);
 
-  const userChartOption: EChartsOption | null =
+  const userChartOption: EChartsCoreOption | null =
     userBookingData.length > 0
       ? {
           tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
@@ -123,7 +129,7 @@ export function StatisticsPage({
         }
       : null;
 
-  const roomChartOption: EChartsOption | null =
+  const roomChartOption: EChartsCoreOption | null =
     roomUsedData.length > 0
       ? {
           tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },

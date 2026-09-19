@@ -26,6 +26,13 @@ import { OssService } from '@infrastructure/oss/oss.service';
 export class UserService {
   private readonly registerCaptchaExpireSeconds = 5 * 60;
 
+  // 验证码连续错满 5 次立即作废，防止 4 位数字验证码被暴力枚举
+  private readonly captchaMaxFailAttempts = 5;
+
+  // 同一用户名登录失败 10 次后锁定 10 分钟
+  private readonly loginMaxFailAttempts = 10;
+  private readonly loginLockSeconds = 10 * 60;
+
   private logger = new Logger();
 
   @InjectRepository(User)
@@ -106,18 +113,54 @@ export class UserService {
   private getUpdatePasswordCaptchaKey(captchaId: string) {
     return `captcha_update_password_${captchaId}`;
   }
-  async register(user: RegisterUserDto) {
-    const captcha = await this.redisService.get(
-      this.getRegisterCaptchaKey(user.captchaId),
-    );
+
+  // 统一验证码校验：比对失败计数，错满上限直接作废验证码
+  private async verifyCaptcha(redisKey: string, input: string) {
+    const captcha = await this.redisService.get(redisKey);
 
     if (!captcha) {
       throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
     }
 
-    if (user.captcha !== captcha) {
+    if (input !== captcha) {
+      const failKey = `captcha_fail_${redisKey}`;
+      const fails = Number((await this.redisService.get(failKey)) ?? 0) + 1;
+
+      if (fails >= this.captchaMaxFailAttempts) {
+        await this.redisService.del(redisKey);
+        await this.redisService.del(failKey);
+        throw new HttpException(
+          '验证码错误次数过多，请重新获取',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // 失败计数与验证码同生命周期
+      await this.redisService.set(
+        failKey,
+        String(fails),
+        this.registerCaptchaExpireSeconds,
+      );
       throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
     }
+
+    await this.redisService.del(`captcha_fail_${redisKey}`);
+  }
+
+  private loginFailKey(username: string, isAdmin: boolean) {
+    return `login_fail_${isAdmin ? 'admin' : 'user'}_${username}`;
+  }
+
+  private async recordLoginFail(failKey: string) {
+    const fails = Number((await this.redisService.get(failKey)) ?? 0) + 1;
+    await this.redisService.set(failKey, String(fails), this.loginLockSeconds);
+  }
+
+  async register(user: RegisterUserDto) {
+    await this.verifyCaptcha(
+      this.getRegisterCaptchaKey(user.captchaId),
+      user.captcha,
+    );
 
     const foundUser = await this.userRepository.findOneBy({
       username: user.username,
@@ -129,7 +172,7 @@ export class UserService {
 
     const newUser = new User();
     newUser.username = user.username;
-    newUser.password = hashPassword(user.password);
+    newUser.password = await hashPassword(user.password);
     newUser.email = user.email;
     newUser.nickName = user.nickName;
 
@@ -139,11 +182,25 @@ export class UserService {
       return '注册成功';
     } catch (e) {
       this.logger.error(e, UserService);
-      return '注册失败';
+      // 唯一索引兜底：并发注册同名用户时由数据库层拦截
+      if ((e as { code?: string })?.code === 'ER_DUP_ENTRY') {
+        throw new HttpException('用户名已存在', HttpStatus.BAD_REQUEST);
+      }
+      throw new HttpException('注册失败', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   async login(loginUserDto: LoginUserDto, isAdmin: boolean) {
+    const failKey = this.loginFailKey(loginUserDto.username, isAdmin);
+    const failCount = Number((await this.redisService.get(failKey)) ?? 0);
+
+    if (failCount >= this.loginMaxFailAttempts) {
+      throw new HttpException(
+        '登录失败次数过多，请 10 分钟后再试',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.userRepository.findOne({
       where: {
         username: loginUserDto.username,
@@ -157,12 +214,22 @@ export class UserService {
     });
 
     if (!user) {
+      await this.recordLoginFail(failKey);
       throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST);
     }
 
-    if (!comparePassword(loginUserDto.password, user.password)) {
+    if (!(await comparePassword(loginUserDto.password, user.password))) {
+      await this.recordLoginFail(failKey);
       throw new HttpException('密码错误', HttpStatus.BAD_REQUEST);
     }
+
+    // 放在密码校验之后：避免向未持密码的请求方泄露账号状态
+    if (user.isFrozen) {
+      throw new HttpException('账号已被冻结，请联系管理员', HttpStatus.BAD_REQUEST);
+    }
+
+    // 登录成功清空失败计数
+    await this.redisService.del(failKey);
 
     const vo = new LoginUserVo();
     vo.userInfo = {
@@ -206,6 +273,7 @@ export class UserService {
       id: user?.id,
       username: user?.username,
       isAdmin: user?.isAdmin,
+      isFrozen: user?.isFrozen,
       roles: user?.roles.map((item) => item.name),
       permissions: user?.roles.reduce<Permission[]>((arr, item) => {
         item.permissions.forEach((permission) => {
@@ -229,17 +297,10 @@ export class UserService {
   }
 
   async updatePassword(userId: number, passwordDto: UpdateUserPasswordDto) {
-    const captcha = await this.redisService.get(
+    await this.verifyCaptcha(
       this.getUpdatePasswordCaptchaKey(passwordDto.captchaId),
+      passwordDto.captcha,
     );
-
-    if (!captcha) {
-      throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
-    }
-
-    if (passwordDto.captcha !== captcha) {
-      throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
-    }
 
     const foundUser = await this.userRepository.findOneBy({
       id: userId,
@@ -249,7 +310,7 @@ export class UserService {
       throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST);
     }
 
-    foundUser.password = hashPassword(passwordDto.password);
+    foundUser.password = await hashPassword(passwordDto.password);
 
     try {
       await this.userRepository.save(foundUser);
@@ -259,22 +320,15 @@ export class UserService {
       return '密码修改成功';
     } catch (e) {
       this.logger.error(e, UserService);
-      return '密码修改失败';
+      throw new HttpException('密码修改失败', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   async update(userId: number, updateUserDto: UpdateUserDto) {
-    const captcha = await this.redisService.get(
+    await this.verifyCaptcha(
       `update_user_captcha_${updateUserDto.email}`,
+      updateUserDto.captcha,
     );
-
-    if (!captcha) {
-      throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
-    }
-
-    if (updateUserDto.captcha !== captcha) {
-      throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
-    }
 
     const foundUser = await this.userRepository.findOneBy({
       id: userId,
@@ -296,7 +350,10 @@ export class UserService {
       return '用户信息修改成功';
     } catch (e) {
       this.logger.error(e, UserService);
-      return '用户信息修改失败';
+      throw new HttpException(
+        '用户信息修改失败',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -343,7 +400,7 @@ export class UserService {
       throw new HttpException('用户不存在', HttpStatus.BAD_REQUEST);
     }
 
-    user.password = hashPassword(resetUserPasswordDto.password);
+    user.password = await hashPassword(resetUserPasswordDto.password);
     await this.userRepository.save(user);
 
     return '密码重置成功';

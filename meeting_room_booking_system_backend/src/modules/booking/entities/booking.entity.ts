@@ -10,6 +10,14 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+// 预订状态机：申请中 → 审批通过/审批驳回；申请中/审批通过 → 已解除
+export enum BookingStatus {
+  APPLYING = '申请中',
+  APPROVED = '审批通过',
+  REJECTED = '审批驳回',
+  RELEASED = '已解除',
+}
+
 @Entity({
   name: 'booking',
 })
@@ -30,9 +38,9 @@ export class Booking {
   @Column({
     length: 20,
     comment: '状态（申请中、审批通过、审批驳回、已解除）',
-    default: '申请中',
+    default: BookingStatus.APPLYING,
   })
-  status: string;
+  status: BookingStatus;
 
   @Column({
     length: 100,

@@ -24,24 +24,37 @@ async function bootstrap() {
     prefix: '/uploads',
   });
 
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      // whitelist：剥离 DTO 未声明的字段，防止恶意字段透传进业务层
+      whitelist: true,
+      // transform：按 DTO 类型自动转换 query/param 等纯文本载荷
+      transform: true,
+    }),
+  );
   app.useGlobalInterceptors(new FormatResponseInterceptor());
   app.useGlobalInterceptors(new InvokeRecordInterceptor());
   app.useGlobalFilters(new UnLoginFilter());
   app.useGlobalFilters(new CustomExceptionFilter());
-  app.enableCors();
-  /**
-   * 配置swagger
-   */
-  const config = new DocumentBuilder()
-    .setTitle('会议室预订系统')
-    .setDescription('api 接口文档')
-    .setVersion('1.0')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-doc', app, document);
 
   const configService = app.get(ConfigService);
+
+  // 前端与 API 同源（vite/nginx 反代），默认不开放跨域；
+  // 确有跨域需求时通过 CORS_ORIGINS 配置来源白名单
+  const corsOrigins = configService.get<string[]>('app.corsOrigins') ?? [];
+  app.enableCors({ origin: corsOrigins.length > 0 ? corsOrigins : false });
+
+  // 接口文档只在开发/测试环境暴露
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('会议室预订系统')
+      .setDescription('api 接口文档')
+      .setVersion('1.0')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-doc', app, document);
+  }
+
   await app.listen(Number(configService.get<number>('app.port') ?? 3000));
 }
 bootstrap();

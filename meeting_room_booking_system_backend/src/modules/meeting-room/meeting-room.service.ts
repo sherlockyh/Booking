@@ -1,14 +1,26 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Like, Repository } from 'typeorm';
+import {
+  InjectEntityManager,
+  InjectRepository,
+} from '@nestjs/typeorm';
+import {
+  EntityManager,
+  FindOptionsWhere,
+  Like,
+  Repository,
+} from 'typeorm';
 import { MeetingRoom } from './entities/meeting-room.entity';
 import { CreateMeetingRoomDto } from './dto/create-meeting-room.dto';
 import { UpdateMeetingRoomDto } from './dto/update-meeting-room.dto';
+import { Booking } from '@modules/booking/entities/booking.entity';
 
 @Injectable()
 export class MeetingRoomService {
   @InjectRepository(MeetingRoom)
   private readonly repository: Repository<MeetingRoom>;
+
+  @InjectEntityManager()
+  private readonly manager: EntityManager;
 
   async find(
     pageNo: number,
@@ -53,7 +65,15 @@ export class MeetingRoomService {
     if (room) {
       throw new BadRequestException('会议室名字已存在');
     }
-    return await this.repository.save(meetingRoomDto);
+    try {
+      return await this.repository.save(meetingRoomDto);
+    } catch (e) {
+      // 唯一索引兜底：并发创建同名会议室时由数据库层拦截
+      if ((e as { code?: string })?.code === 'ER_DUP_ENTRY') {
+        throw new BadRequestException('会议室名字已存在');
+      }
+      throw e;
+    }
   }
 
   async update(meetingRoomDto: UpdateMeetingRoomDto) {
@@ -79,6 +99,15 @@ export class MeetingRoomService {
   }
 
   async delete(id: number) {
+    // 外键是 CASCADE：不拦截的话删会议室会连带删光它的预订历史
+    const bookingCount = await this.manager.countBy(Booking, {
+      room: { id },
+    });
+
+    if (bookingCount > 0) {
+      throw new BadRequestException('该会议室存在关联预订，无法删除');
+    }
+
     await this.repository.delete({ id });
     return 'success';
   }

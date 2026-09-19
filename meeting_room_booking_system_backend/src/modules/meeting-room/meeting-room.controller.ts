@@ -12,7 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { MeetingRoomService } from './meeting-room.service';
-import { generateParseIntPipe } from '@common/utils';
+import { generateMaxValuePipe, generateParseIntPipe } from '@common/utils';
 import { CreateMeetingRoomDto } from './dto/create-meeting-room.dto';
 import { UpdateMeetingRoomDto } from './dto/update-meeting-room.dto';
 import {
@@ -23,7 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequireLogin } from '@common/decorators/custom.decorator';
+import { RequireAdmin } from '@common/decorators/custom.decorator';
 import { MeetingRoomVo } from './vo/meeting-room.vo';
 import { MeetingRoomListVo } from './vo/meeting-room-list.vo';
 
@@ -67,8 +67,9 @@ export class MeetingRoomController {
     pageNo: number,
     @Query(
       'pageSize',
-      new DefaultValuePipe(2),
+      new DefaultValuePipe(10),
       generateParseIntPipe('pageSize'),
+      generateMaxValuePipe('pageSize', 100),
     )
     pageSize: number,
     @Query('name') name: string,
@@ -97,6 +98,7 @@ export class MeetingRoomController {
     type: MeetingRoomVo,
   })
   @Post('create')
+  @RequireAdmin()
   async create(@Body() meetingRoomDto: CreateMeetingRoomDto) {
     return await this.meetingRoomService.create(meetingRoomDto);
   }
@@ -114,6 +116,7 @@ export class MeetingRoomController {
     description: 'success',
   })
   @Put('update')
+  @RequireAdmin()
   async update(@Body() meetingRoomDto: UpdateMeetingRoomDto) {
     return await this.meetingRoomService.update(meetingRoomDto);
   }
@@ -143,7 +146,7 @@ export class MeetingRoomController {
     status: HttpStatus.OK,
     description: 'success',
   })
-  @RequireLogin()
+  @RequireAdmin()
   @Delete(':id')
   async delete(@Param('id') id: number) {
     return await this.meetingRoomService.delete(id);

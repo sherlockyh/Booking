@@ -12,6 +12,7 @@ import { usePageRequest } from '@/shared/hooks/usePageRequest';
 import { useRequest } from '@/shared/hooks/useRequest';
 import styles from './styles/index.module.less';
 
+import { formatDateTime } from '@/shared/utils/datetime';
 const initialSearch: MeetingRoomSearchParams = {
   name: '',
   capacity: '',
@@ -35,15 +36,6 @@ const filterFields: ConfigFilterField<MeetingRoomSearchParams>[] = [
     placeholder: '请输入设备',
   },
 ];
-
-function formatDateTime(value?: string | number) {
-  if (!value) {
-    return '-';
-  }
-
-  const time = dayjs(value);
-  return time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : '-';
-}
 
 export function UserMeetingRoomListPage() {
   const { message } = AntdApp.useApp();

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Button, Popconfirm, Space, Tag, App as AntdApp } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, ToolOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { deleteMeetingRoom, getMeetingRoomList } from '@/modules/admin/api';
 import type { MeetingRoomItem, MeetingRoomSearchParams } from '@/modules/admin/types';
 import { MeetingRoomFormModal } from '@/modules/admin/meetingRooms/components/MeetingRoomFormModal';
@@ -13,6 +12,7 @@ import { usePageRequest } from '@/shared/hooks/usePageRequest';
 import { useRequest } from '@/shared/hooks/useRequest';
 import styles from './styles/index.module.less';
 
+import { formatDateTime } from '@/shared/utils/datetime';
 const initialSearch: MeetingRoomSearchParams = {
   name: '',
   capacity: '',
@@ -37,15 +37,6 @@ const filterFields: ConfigFilterField<MeetingRoomSearchParams>[] = [
     prefix: <ToolOutlined />,
   },
 ];
-
-function formatDateTime(value?: string | number) {
-  if (!value) {
-    return '-';
-  }
-
-  const time = dayjs(value);
-  return time.isValid() ? time.format('YYYY-MM-DD HH:mm:ss') : '-';
-}
 
 export function MeetingRoomListPage() {
   const { message } = AntdApp.useApp();
