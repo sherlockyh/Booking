@@ -27,7 +27,7 @@ export class StatisticService {
       .andWhere('b.status in (:...validStatuses)', {
         validStatuses: [BookingStatus.APPLYING, BookingStatus.APPROVED],
       })
-      .addGroupBy('b.user')
+      .addGroupBy('b.userId')
       .getRawMany();
     return res;
   }

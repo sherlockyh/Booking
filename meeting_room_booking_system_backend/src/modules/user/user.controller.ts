@@ -28,6 +28,8 @@ import { ResetUserPasswordDto } from './dto/reset-user-password.dto';
 import { DeleteUserDto } from './dto/delete-user.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { generateMaxValuePipe, generateParseIntPipe } from '@common/utils';
+import { RedisService } from '@infrastructure/redis/redis.service';
+import { randomUUID } from 'node:crypto';
 import path from 'path';
 import * as multer from 'multer';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -46,6 +48,9 @@ export class UserController {
 
   @Inject(OssService)
   private ossService: OssService;
+
+  @Inject(RedisService)
+  private redisService: RedisService;
 
   @Get('captcha')
   async getRegisterCaptcha() {
@@ -101,7 +106,26 @@ export class UserController {
 
   private async refreshTokens(refreshToken: string, isAdmin: boolean) {
     try {
-      const data = this.jwtService.verify(refreshToken);
+      const data = this.jwtService.verify<{
+        typ?: string;
+        userId: number;
+        jti?: string;
+        exp?: number;
+      }>(refreshToken);
+
+      // access token 不能用来刷新，否则 token 可以无限自我续期
+      if (data.typ !== 'refresh') {
+        throw new UnauthorizedException('token 已失效，请重新登录');
+      }
+
+      // refresh token 一次性使用：轮转后旧 token 的 jti 进黑名单
+      if (
+        data.jti &&
+        (await this.redisService.get(this.getRevokedRefreshTokenKey(data.jti)))
+      ) {
+        throw new UnauthorizedException('token 已失效，请重新登录');
+      }
+
       const user = await this.userService.findUserById(data.userId, isAdmin);
       if (!user?.id) {
         throw new UnauthorizedException('token 已失效，请重新登录');
@@ -110,6 +134,19 @@ export class UserController {
       if (user.isFrozen) {
         throw new UnauthorizedException('账号已被冻结，请联系管理员');
       }
+
+      // 签发新 token 后作废旧 refresh token，黑名单 TTL 设为旧 token 的剩余有效期
+      if (data.jti && data.exp) {
+        const ttl = data.exp - Math.floor(Date.now() / 1000);
+        if (ttl > 0) {
+          await this.redisService.set(
+            this.getRevokedRefreshTokenKey(data.jti),
+            '1',
+            ttl,
+          );
+        }
+      }
+
       return this.generateTokens(user);
     } catch (e) {
       if (e instanceof UnauthorizedException) {
@@ -119,6 +156,10 @@ export class UserController {
     }
   }
 
+  private getRevokedRefreshTokenKey(jti: string) {
+    return `jwt_refresh_revoked_${jti}`;
+  }
+
   private generateTokens(userInfo: {
     id?: number;
     username?: string;
@@ -126,8 +167,11 @@ export class UserController {
     roles?: string[];
     permissions?: unknown[];
   }) {
+    // typ 声明 token 类型：LoginGuard 只放行 access，
+    // /refresh 只收 refresh，两类 token 不能互用
     const accessToken = this.jwtService.sign(
       {
+        typ: 'access',
         userId: userInfo.id,
         username: userInfo.username,
         isAdmin: userInfo.isAdmin,
@@ -135,18 +179,19 @@ export class UserController {
         permissions: userInfo.permissions,
       },
       {
-        expiresIn:
-          this.configService.get('jwt_access_token_expires_time') || '30m',
+        expiresIn: this.configService.get('jwt.expiresIn') || '30m',
       },
     );
 
     const refreshToken = this.jwtService.sign(
       {
+        typ: 'refresh',
         userId: userInfo.id,
       },
       {
-        expiresIn:
-          this.configService.get('jwt_refresh_token_expires_time') || '7d',
+        expiresIn: this.configService.get('jwt.refreshExpiresIn') || '7d',
+        // 唯一 id 用于轮转时把旧 token 拉黑
+        jwtid: randomUUID(),
       },
     );
 

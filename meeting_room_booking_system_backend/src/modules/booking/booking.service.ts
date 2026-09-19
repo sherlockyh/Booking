@@ -158,11 +158,35 @@ export class BookingService {
     return 'success';
   }
 
-  async unbind(id: number) {
-    await this.updateStatus(id, BookingStatus.RELEASED, [
-      BookingStatus.APPLYING,
-      BookingStatus.APPROVED,
-    ]);
+  // 解除需要校验预订归属（普通用户只能解除自己的），所以不复用 updateStatus
+  async unbind(id: number, operator: { userId: number; isAdmin: boolean }) {
+    const booking = await this.bookingRepository.findOne({
+      where: { id },
+      relations: { user: true },
+    });
+
+    if (!booking) {
+      throw new BadRequestException('预订不存在');
+    }
+
+    if (
+      !operator.isAdmin &&
+      booking.user?.id !== operator.userId
+    ) {
+      throw new BadRequestException('只能解除自己的预订');
+    }
+
+    if (
+      ![BookingStatus.APPLYING, BookingStatus.APPROVED].includes(
+        booking.status,
+      )
+    ) {
+      throw new BadRequestException(
+        `当前状态为「${booking.status}」，不允许解除`,
+      );
+    }
+
+    await this.bookingRepository.update(id, { status: BookingStatus.RELEASED });
     return 'success';
   }
 

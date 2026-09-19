@@ -22,6 +22,7 @@ describe('BookingService', () => {
   let bookingRepository: {
     manager: { transaction: ReturnType<typeof vi.fn> };
     findOneBy: ReturnType<typeof vi.fn>;
+    findOne: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
   };
 
@@ -40,6 +41,7 @@ describe('BookingService', () => {
         ),
       },
       findOneBy: vi.fn(),
+      findOne: vi.fn(),
       update: vi.fn(),
     };
 
@@ -164,13 +166,14 @@ describe('BookingService', () => {
       expect(bookingRepository.update).not.toHaveBeenCalled();
     });
 
-    it('审批通过的预订可以解除', async () => {
-      bookingRepository.findOneBy.mockResolvedValue({
+    it('审批通过的预订可以由本人解除', async () => {
+      bookingRepository.findOne.mockResolvedValue({
         id: 1,
         status: BookingStatus.APPROVED,
+        user: { id: 10 },
       });
 
-      await service.unbind(1);
+      await service.unbind(1, { userId: 10, isAdmin: false });
 
       expect(bookingRepository.update).toHaveBeenCalledWith(1, {
         status: BookingStatus.RELEASED,
@@ -178,12 +181,50 @@ describe('BookingService', () => {
     });
 
     it('已驳回的预订不能解除', async () => {
-      bookingRepository.findOneBy.mockResolvedValue({
+      bookingRepository.findOne.mockResolvedValue({
         id: 1,
         status: BookingStatus.REJECTED,
+        user: { id: 10 },
       });
 
-      await expect(service.unbind(1)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.unbind(1, { userId: 10, isAdmin: false }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('普通用户不能解除别人的预订', async () => {
+      bookingRepository.findOne.mockResolvedValue({
+        id: 1,
+        status: BookingStatus.APPLYING,
+        user: { id: 10 },
+      });
+
+      await expect(
+        service.unbind(1, { userId: 20, isAdmin: false }),
+      ).rejects.toThrow('只能解除自己的预订');
+      expect(bookingRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('管理员可以解除任意预订', async () => {
+      bookingRepository.findOne.mockResolvedValue({
+        id: 1,
+        status: BookingStatus.APPROVED,
+        user: { id: 10 },
+      });
+
+      await service.unbind(1, { userId: 1, isAdmin: true });
+
+      expect(bookingRepository.update).toHaveBeenCalledWith(1, {
+        status: BookingStatus.RELEASED,
+      });
+    });
+
+    it('解除不存在的预订时报错', async () => {
+      bookingRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.unbind(1, { userId: 10, isAdmin: false }),
+      ).rejects.toThrow('预订不存在');
     });
   });
 });

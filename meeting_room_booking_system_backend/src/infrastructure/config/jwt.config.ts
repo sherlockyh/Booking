@@ -13,5 +13,6 @@ export default registerAs('jwt', () => {
   return {
     secret: secret ?? 'meeting_room_booking_system_jwt_secret',
     expiresIn: process.env.JWT_EXPIRES_IN ?? '30m',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   };
 });

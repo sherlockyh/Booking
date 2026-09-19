@@ -13,6 +13,8 @@ import { Permission } from '@modules/user/entities/permission.entity';
 import { UnLoginException } from '@common/filter/unlogin.filter';
 
 interface JwtUserData {
+  // token 类型：access 可调业务接口，refresh 只能调 /refresh
+  typ: 'access' | 'refresh';
   userId: number;
   username: string;
   isAdmin?: boolean;
@@ -62,11 +64,18 @@ export class LoginGuard implements CanActivate {
       const token = authorization.split(' ')[1];
       const data = this.jwtService.verify<JwtUserData>(token);
 
+      // refresh token 不能当 access token 使用：不放行，
+      // 走 UnLoginException 让前端进入正常的刷新流程
+      if (data.typ !== 'access') {
+        throw new UnLoginException();
+      }
+
       if (requireAdmin && !data.isAdmin) {
         throw new UnauthorizedException('您没有访问该接口的权限');
       }
 
       request.user = {
+        typ: data.typ,
         userId: data.userId,
         username: data.username,
         isAdmin: data.isAdmin,

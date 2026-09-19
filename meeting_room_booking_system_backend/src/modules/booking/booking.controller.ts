@@ -71,9 +71,13 @@ export class BookingController {
     return this.bookingService.reject(id);
   }
 
+  // 普通用户可解除自己的预订，管理员可解除任意预订
   @Get('unbind/:id')
-  @RequireAdmin()
-  async unbind(@Param('id', ParseIntPipe) id: number) {
-    return this.bookingService.unbind(id);
+  @RequireLogin()
+  async unbind(
+    @Param('id', ParseIntPipe) id: number,
+    @UserInfo() user: { userId: number; isAdmin: boolean },
+  ) {
+    return this.bookingService.unbind(id, user);
   }
 }

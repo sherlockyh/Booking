@@ -46,11 +46,8 @@ export class MeetingRoom {
   })
   description: string;
 
-  @Column({
-    comment: '是否被预订',
-    default: false,
-  })
-  isBooked: boolean;
+  // isBooked 不落库：会议室是否占用取决于当前时刻有无
+  // 申请中/审批通过且覆盖现在的预订，由查询时实时计算
 
   @CreateDateColumn({
     comment: '创建时间',
