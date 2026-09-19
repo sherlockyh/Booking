@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Avatar, Button, Popconfirm, Space, App as AntdApp } from 'antd';
+import { Avatar, Button, Popconfirm, Space, Tag, App as AntdApp } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { DeleteOutlined, MailOutlined, SmileOutlined, UserOutlined } from '@ant-design/icons';
 import { deleteUser, freezeUser, getUserList, unfreezeUser } from '@/modules/admin/api';
 import type { AdminUserItem, AdminUserSearchParams } from '@/modules/admin/types';
+import { AssignRolesModal } from '@/modules/admin/users/components/AssignRolesModal';
 import { ResetPasswordModal } from '@/modules/admin/users/components/ResetPasswordModal';
 import { ConfigFilterForm, type ConfigFilterField } from '@/shared/components/ConfigFilterForm/ConfigFilterForm';
 import { ConfigTable } from '@/shared/components/ConfigTable/ConfigTable';
@@ -43,6 +44,7 @@ const filterFields: ConfigFilterField<AdminUserSearchParams>[] = [
 export function UserListPage() {
   const { message } = AntdApp.useApp();
   const [resetUser, setResetUser] = useState<AdminUserItem | null>(null);
+  const [assignUser, setAssignUser] = useState<AdminUserItem | null>(null);
   const pageRequest = usePageRequest<AdminUserItem, AdminUserSearchParams>(getUserList, initialSearch);
   const freezeRequest = useRequest(freezeUser, {
     onSuccess: () => {
@@ -86,6 +88,24 @@ export function UserListPage() {
         dataIndex: 'email',
       },
       {
+        title: '角色',
+        dataIndex: 'roles',
+        width: 140,
+        render: (roles: string[] | undefined) => (
+          <Space size={[8, 8]} wrap>
+            {roles && roles.length > 0 ? (
+              roles.map((name) => (
+                <Tag key={name} color="geekblue">
+                  {name}
+                </Tag>
+              ))
+            ) : (
+              <Tag>未分配</Tag>
+            )}
+          </Space>
+        ),
+      },
+      {
         title: '注册时间',
         dataIndex: 'createTime',
         width: 180,
@@ -94,7 +114,7 @@ export function UserListPage() {
       {
         title: '操作',
         key: 'actions',
-        width: 260,
+        width: 320,
         fixed: 'right',
         render: (_, record) => (
           <Space>
@@ -121,6 +141,9 @@ export function UserListPage() {
                 </Button>
               </Popconfirm>
             )}
+            <Button type="link" onClick={() => setAssignUser(record)}>
+              分配角色
+            </Button>
             <Button type="link" onClick={() => setResetUser(record)}>
               重置密码
             </Button>
@@ -170,6 +193,15 @@ export function UserListPage() {
         onCancel={() => setResetUser(null)}
         onSuccess={() => {
           setResetUser(null);
+          void pageRequest.reload();
+        }}
+      />
+      <AssignRolesModal
+        open={Boolean(assignUser)}
+        user={assignUser}
+        onCancel={() => setAssignUser(null)}
+        onSuccess={() => {
+          setAssignUser(null);
           void pageRequest.reload();
         }}
       />

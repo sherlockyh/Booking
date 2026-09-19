@@ -5,6 +5,7 @@ export const ROUTE_PATH = {
   password: "/password",
   adminLogin: "/admin/login",
   adminUsers: "/admin/users",
+  adminRoles: "/admin/roles",
   adminProfile: "/admin/profile",
   adminPassword: "/admin/password",
   adminMeetingRooms: "/admin/meeting-rooms",

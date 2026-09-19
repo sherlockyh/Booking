@@ -17,8 +17,8 @@ import { LoginUserDto } from './dto/login-user.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import {
-  RequireAdmin,
   RequireLogin,
+  RequirePermission,
   UserInfo,
 } from '@common/decorators/custom.decorator';
 import { UserDetailVo } from './vo/user-info.vo';
@@ -240,21 +240,21 @@ export class UserController {
   }
 
   @Get('freeze')
-  @RequireAdmin()
+  @RequirePermission('user:manage')
   async freeze(@Query('id') userId: number) {
     await this.userService.freezeUserById(userId);
     return 'success';
   }
 
   @Get('unfreeze')
-  @RequireAdmin()
+  @RequirePermission('user:manage')
   async unfreeze(@Query('id') userId: number) {
     await this.userService.unfreezeUserById(userId);
     return 'success';
   }
 
   @Get('list')
-  @RequireAdmin()
+  @RequirePermission('user:manage')
   async list(
     @Query('pageNo', new DefaultValuePipe(1), generateParseIntPipe('pageNo'))
     pageNo: number,
@@ -279,7 +279,7 @@ export class UserController {
   }
 
   @Post('admin/reset_password')
-  @RequireAdmin()
+  @RequirePermission('user:manage')
   async resetPasswordByAdmin(
     @Body() resetUserPasswordDto: ResetUserPasswordDto,
   ) {
@@ -287,7 +287,7 @@ export class UserController {
   }
 
   @Post('admin/delete')
-  @RequireAdmin()
+  @RequirePermission('user:manage')
   async deleteByAdmin(@Body() deleteUserDto: DeleteUserDto) {
     return await this.userService.deleteUserByAdmin(deleteUserDto);
   }

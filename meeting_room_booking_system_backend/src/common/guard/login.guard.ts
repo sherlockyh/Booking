@@ -9,7 +9,6 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
-import { Permission } from '@modules/user/entities/permission.entity';
 import { UnLoginException } from '@common/filter/unlogin.filter';
 
 interface JwtUserData {
@@ -19,7 +18,8 @@ interface JwtUserData {
   username: string;
   isAdmin?: boolean;
   roles: string[];
-  permissions: Permission[];
+  // 权限码数组（如 ['booking:audit']），由角色的权限聚合去重而来
+  permissions: string[];
 }
 
 declare module 'express' {

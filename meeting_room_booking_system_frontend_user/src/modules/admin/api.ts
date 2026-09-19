@@ -15,6 +15,11 @@ import type {
   MeetingRoomItem,
   CreateMeetingRoomParams,
   UpdateMeetingRoomParams,
+  RoleItem,
+  PermissionItem,
+  CreateRoleParams,
+  UpdateRoleParams,
+  AssignUserRolesParams,
 } from "@/modules/admin/types";
 import type { CaptchaResult } from "@/modules/user/auth/types";
 import type { UploadOssResult } from "@/shared/api/types";
@@ -101,6 +106,47 @@ export function resetUserPassword(params: ResetPasswordParams) {
 
 export function deleteUser(params: DeleteUserParams) {
   return adminHttpPost<string, DeleteUserParams>("/user/admin/delete", params);
+}
+
+// --- 角色权限模块 ---
+
+interface RoleListResponse {
+  roles: RoleItem[];
+  totalCount: number;
+}
+
+export function getRoleList(params: { pageNo: number; pageSize: number }) {
+  return adminHttpGet<RoleListResponse>("/role/list", { params }).then(
+    (result) => {
+      return {
+        list: result.roles,
+        total: result.totalCount,
+      };
+    },
+  );
+}
+
+export function getPermissionList() {
+  return adminHttpGet<PermissionItem[]>("/role/permission/list");
+}
+
+export function createRole(params: CreateRoleParams) {
+  return adminHttpPost<RoleItem, CreateRoleParams>("/role/create", params);
+}
+
+export function updateRole(params: UpdateRoleParams) {
+  return adminHttpPut<string, UpdateRoleParams>("/role/update", params);
+}
+
+export function deleteRole(id: number) {
+  return adminHttpDelete<string>(`/role/${id}`);
+}
+
+export function assignUserRoles(params: AssignUserRolesParams) {
+  return adminHttpPost<string, AssignUserRolesParams>(
+    "/role/assign-users",
+    params,
+  );
 }
 
 export function createMeetingRoom(params: CreateMeetingRoomParams) {

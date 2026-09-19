@@ -1,6 +1,7 @@
 import {
   BarChartOutlined,
   EnvironmentOutlined,
+  SafetyCertificateOutlined,
   ScheduleOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
@@ -15,6 +16,11 @@ const menuItems: MenuProps['items'] = [
     key: ROUTE_PATH.adminUsers,
     icon: <TeamOutlined />,
     label: '用户管理',
+  },
+  {
+    key: ROUTE_PATH.adminRoles,
+    icon: <SafetyCertificateOutlined />,
+    label: '角色管理',
   },
   {
     key: ROUTE_PATH.adminMeetingRooms,

@@ -27,6 +27,11 @@ const UserListPage = lazy(() =>
     default: m.UserListPage,
   })),
 );
+const RoleListPage = lazy(() =>
+  import('@/modules/admin/roles/RoleListPage').then((m) => ({
+    default: m.RoleListPage,
+  })),
+);
 const MeetingRoomListPage = lazy(() =>
   import('@/modules/admin/meetingRooms/MeetingRoomListPage').then((m) => ({
     default: m.MeetingRoomListPage,
@@ -119,6 +124,10 @@ export const router = createBrowserRouter([
       {
         path: ROUTE_PATH.adminUsers,
         element: page(<UserListPage />),
+      },
+      {
+        path: ROUTE_PATH.adminRoles,
+        element: page(<RoleListPage />),
       },
       {
         path: ROUTE_PATH.adminMeetingRooms,

@@ -24,6 +24,8 @@ import { AddBooking1757520000000 } from '@infrastructure/database/migrations/175
 import { AlterPasswordLength1757600000000 } from '@infrastructure/database/migrations/1757600000000-alter-password-length';
 import { SeedFreshAccounts1757700000000 } from '@infrastructure/database/migrations/1757700000000-seed-fresh-accounts';
 import { AddUniqueAndBookingIndexes1757800000000 } from '@infrastructure/database/migrations/1757800000000-add-unique-and-booking-indexes';
+import { DropMeetingRoomIsBooked1789950000000 } from '@infrastructure/database/migrations/1789950000000-drop-meeting-room-is-booked';
+import { SeedRbac1789960000000 } from '@infrastructure/database/migrations/1789960000000-seed-rbac';
 import { JwtInfraModule } from '@infrastructure/jwt/jwt.module';
 import { OssModule } from '@infrastructure/oss/oss.module';
 import { APP_GUARD } from '@nestjs/core';
@@ -95,6 +97,8 @@ import { StatisticModule } from './modules/statistic/statistic.module';
           AlterPasswordLength1757600000000,
           SeedFreshAccounts1757700000000,
           AddUniqueAndBookingIndexes1757800000000,
+          DropMeetingRoomIsBooked1789950000000,
+          SeedRbac1789960000000,
         ],
         poolSize: 10,
       }),

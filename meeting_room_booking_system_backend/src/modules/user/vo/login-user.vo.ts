@@ -1,5 +1,3 @@
-import { Permission } from '../entities/permission.entity';
-
 interface UserInfo {
   id: number;
 
@@ -24,7 +22,8 @@ interface UserInfo {
 
   roles: string[];
 
-  permissions: Permission[];
+  // 权限码数组（如 ['booking:audit']）：token 里只放 code，不放完整权限对象
+  permissions: string[];
 }
 export class LoginUserVo {
   userInfo: UserInfo;

@@ -13,6 +13,7 @@ export interface AdminUserItem extends Pick<
   "id" | "username" | "nickName" | "email" | "headPic" | "headPicUrl" | "isFrozen"
 > {
   createTime: string | number;
+  roles?: string[];
 }
 
 export interface AdminUserSearchParams {
@@ -58,6 +59,36 @@ export interface CreateMeetingRoomParams {
 
 export interface UpdateMeetingRoomParams extends Partial<CreateMeetingRoomParams> {
   id: number;
+}
+
+// --- 角色权限模块 ---
+
+export interface RoleItem {
+  id: number;
+  name: string;
+  permissions: string[];
+}
+
+export interface PermissionItem {
+  id: number;
+  code: string;
+  description: string;
+}
+
+export interface CreateRoleParams {
+  name: string;
+  permissionCodes: string[];
+}
+
+export interface UpdateRoleParams {
+  id: number;
+  name: string;
+  permissionCodes: string[];
+}
+
+export interface AssignUserRolesParams {
+  userId: number;
+  roleIds: number[];
 }
 
 export interface BookingItem {

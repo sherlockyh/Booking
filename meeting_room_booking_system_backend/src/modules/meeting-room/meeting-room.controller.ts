@@ -23,7 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RequireAdmin } from '@common/decorators/custom.decorator';
+import { RequirePermission } from '@common/decorators/custom.decorator';
 import { MeetingRoomVo } from './vo/meeting-room.vo';
 import { MeetingRoomListVo } from './vo/meeting-room-list.vo';
 
@@ -98,7 +98,7 @@ export class MeetingRoomController {
     type: MeetingRoomVo,
   })
   @Post('create')
-  @RequireAdmin()
+  @RequirePermission('room:manage')
   async create(@Body() meetingRoomDto: CreateMeetingRoomDto) {
     return await this.meetingRoomService.create(meetingRoomDto);
   }
@@ -116,7 +116,7 @@ export class MeetingRoomController {
     description: 'success',
   })
   @Put('update')
-  @RequireAdmin()
+  @RequirePermission('room:manage')
   async update(@Body() meetingRoomDto: UpdateMeetingRoomDto) {
     return await this.meetingRoomService.update(meetingRoomDto);
   }
@@ -146,7 +146,7 @@ export class MeetingRoomController {
     status: HttpStatus.OK,
     description: 'success',
   })
-  @RequireAdmin()
+  @RequirePermission('room:manage')
   @Delete(':id')
   async delete(@Param('id') id: number) {
     return await this.meetingRoomService.delete(id);

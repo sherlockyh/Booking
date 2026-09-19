@@ -244,14 +244,14 @@ export class UserService {
       isFrozen: user.isFrozen,
       isAdmin: user.isAdmin,
       roles: user.roles.map((item) => item.name),
-      permissions: user.roles.reduce<Permission[]>((arr, item) => {
-        item.permissions.forEach((permission) => {
-          if (arr.indexOf(permission) === -1) {
-            arr.push(permission);
-          }
-        });
-        return arr;
-      }, []),
+      // 聚合各角色的权限码并去重，token 里只放 code
+      permissions: [
+        ...new Set(
+          user.roles.flatMap((item) =>
+            item.permissions.map((permission) => permission.code),
+          ),
+        ),
+      ],
     };
     return vo;
   }
@@ -275,14 +275,13 @@ export class UserService {
       isAdmin: user?.isAdmin,
       isFrozen: user?.isFrozen,
       roles: user?.roles.map((item) => item.name),
-      permissions: user?.roles.reduce<Permission[]>((arr, item) => {
-        item.permissions.forEach((permission) => {
-          if (arr.indexOf(permission) === -1) {
-            arr.push(permission);
-          }
-        });
-        return arr;
-      }, []),
+      permissions: [
+        ...new Set(
+          user?.roles.flatMap((item) =>
+            item.permissions.map((permission) => permission.code),
+          ) ?? [],
+        ),
+      ],
     };
   }
 
@@ -457,6 +456,8 @@ export class UserService {
         headPic: true,
         createTime: true,
       },
+      // 角色名给用户管理页的"分配角色"回显用
+      relations: { roles: true },
       skip: skipCount,
       take: pageSize,
       where: condition,
@@ -466,6 +467,7 @@ export class UserService {
       // headPic 存的是 OSS Key（或历史遗留路径），给出参时拼成可访问 URL
       users: users.map((user) => ({
         ...user,
+        roles: user.roles.map((role) => role.name),
         headPicUrl: this.ossService.resolveAvatarUrl(user.headPic),
       })),
       totalCount,

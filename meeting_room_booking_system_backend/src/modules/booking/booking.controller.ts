@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { generateMaxValuePipe, generateParseIntPipe } from '@common/utils';
-import { RequireAdmin, RequireLogin, UserInfo } from '@common/decorators/custom.decorator';
+import { RequireLogin, RequirePermission, UserInfo } from '@common/decorators/custom.decorator';
 import { CreateBookingDto } from './dto/create-booking.dto';
 
 @Controller('booking')
@@ -60,13 +60,13 @@ export class BookingController {
   }
 
   @Get('apply/:id')
-  @RequireAdmin()
+  @RequirePermission('booking:audit')
   async apply(@Param('id', ParseIntPipe) id: number) {
     return this.bookingService.apply(id);
   }
 
   @Get('reject/:id')
-  @RequireAdmin()
+  @RequirePermission('booking:audit')
   async reject(@Param('id', ParseIntPipe) id: number) {
     return this.bookingService.reject(id);
   }

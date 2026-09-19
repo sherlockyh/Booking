@@ -1,4 +1,5 @@
 import {
+  applyDecorators,
   createParamDecorator,
   ExecutionContext,
   SetMetadata,
@@ -7,8 +8,13 @@ import { Request } from 'express';
 
 export const RequireLogin = () => SetMetadata('require-login', true);
 
+// 标注权限码的接口同时要求登录：LoginGuard 只认 require-login/require-admin
+// 元数据，不设置的话匿名请求会带着空的 request.user 进入 PermissionGuard
 export const RequirePermission = (...permissions: string[]) =>
-  SetMetadata('require-permission', permissions);
+  applyDecorators(
+    SetMetadata('require-login', true),
+    SetMetadata('require-permission', permissions),
+  );
 
 export const RequireAdmin = () => SetMetadata('require-admin', true);
 
