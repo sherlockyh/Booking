@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Checkbox, Form, Input, Modal, App as AntdApp } from 'antd';
 import { createRole, getPermissionList, updateRole } from '@/modules/admin/api';
 import type {
@@ -44,20 +44,28 @@ export function RoleFormModal({
   const isEdit = Boolean(record);
   const loading = createRequest.loading || updateRequest.loading;
   const { run: loadPermissions } = permissionRequest;
+  const permissionLoadOpenRef = useRef(false);
 
   useEffect(() => {
-    if (open) {
-      void loadPermissions();
-      if (record) {
-        form.setFieldsValue({
-          name: record.name,
-          permissionCodes: record.permissions,
-        });
-      } else {
-        form.resetFields();
-      }
+    if (!open) {
+      permissionLoadOpenRef.current = false;
+      return;
     }
-    // loadPermissions 来自 useRequest，内部 useCallback 依赖为空、引用稳定
+
+    // 只在弹窗一次打开时请求一次，避免请求状态更新触发重复请求。
+    if (!permissionLoadOpenRef.current) {
+      permissionLoadOpenRef.current = true;
+      void loadPermissions();
+    }
+
+    if (record) {
+      form.setFieldsValue({
+        name: record.name,
+        permissionCodes: record.permissions,
+      });
+    } else {
+      form.resetFields();
+    }
   }, [form, open, record, loadPermissions]);
 
   const handleOk = () => {
