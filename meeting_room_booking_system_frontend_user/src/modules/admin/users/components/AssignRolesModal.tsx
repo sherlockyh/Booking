@@ -1,10 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Checkbox, Form, Modal, App as AntdApp } from 'antd';
 import { assignUserRoles, getRoleList } from '@/modules/admin/api';
 import type {
   AdminUserItem,
   AssignUserRolesParams,
-  RoleItem,
 } from '@/modules/admin/types';
 import { useRequest } from '@/shared/hooks/useRequest';
 
@@ -32,8 +31,9 @@ export function AssignRolesModal({
   const roleRequest = useRequest(
     () => getRoleList({ pageNo: 1, pageSize: 100 }),
   );
-  const roles: RoleItem[] = roleRequest.data?.list ?? [];
+  const roles = roleRequest.data?.list ?? [];
   const { run: loadRoles } = roleRequest;
+  const rolesLoadedRef = useRef(false);
 
   const assignRequest = useRequest(assignUserRoles, {
     onSuccess: () => {
@@ -43,20 +43,34 @@ export function AssignRolesModal({
   });
 
   useEffect(() => {
-    if (open) {
-      void loadRoles();
-      if (user) {
-        // 回显：把角色名匹配回 id（列表接口只返回角色名数组）
-        const currentIds = roles
-          .filter((role) => user.roles?.includes(role.name))
-          .map((role) => role.id);
-        form.setFieldsValue({ roleIds: currentIds });
-      } else {
-        form.resetFields();
+    if (!open || rolesLoadedRef.current) {
+      return;
     }
+
+    rolesLoadedRef.current = true;
+    void loadRoles();
+  }, [loadRoles, open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
     }
-    // roles 在 open 变化时可能尚未返回，这里依赖它做回显匹配
-  }, [form, open, user, roles, loadRoles]);
+
+    if (!user) {
+      form.resetFields();
+      return;
+    }
+
+    if (!roleRequest.data) {
+      return;
+    }
+
+    // 回显：把角色名匹配回 id（列表接口只返回角色名数组）
+    const currentIds = roleRequest.data.list
+      .filter((role) => user.roles?.includes(role.name))
+      .map((role) => role.id);
+    form.setFieldsValue({ roleIds: currentIds });
+  }, [form, open, roleRequest.data, user]);
 
   const handleOk = () => {
     form.submit();
